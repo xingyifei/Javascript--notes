@@ -206,7 +206,21 @@ myModule.component('myComponent', JSON);
 
 
 
-### Angularjs中的promise对象
+### Angularjs中的promise对象（2种写法）
+
+第一种写法
+
+```javascript
+$q(function resolver (resolve, reject) {})
+function test(){
+  return $q((resolve)=>{
+    resolve(111);
+  })
+};
+test().then((data)=>{console.log(data)});//结果为111
+```
+
+第二种写法
 
 Javascript是单线程，当某个任务耗时过长容易造成阻塞，为了解决阻塞问题，引入了promise对象也就是异步模式
 
@@ -352,3 +366,135 @@ ng-disabled只能用在以下标签中
 
 <input>  <textarea><select><button>
 
+
+
+## 嵌套路由
+
+angular自带的ng-router路由功能有限推荐使用嵌套路由ui.router
+
+1. ngRoute
+   - $routeProvider(服务提供者) --------- 对应于下面的urlRouterProvider和stateProvider
+   - $route(服务) --------- 对应于下面的urlRouter和state
+   - $routeParams(服务) --------- 对应于下面的stateParams
+   - ng-view(指令) --------- 对应于下面的ui-view
+2. ui.router
+   - $urlRouterProvider(服务提供者) --------- 用来配置路由重定向
+   - $urlRouter(服务)
+   - $stateProvider(服务提供者) --------- 用来配置路由
+   - $state(服务) --------- 用来显示当前路由状态信息，以及一些路由方法（如：跳转）
+   - $stateParams(服务) --------- 用来存储路由匹配时的参数
+   - ui-view(指令) --------- 路由模板渲染，对应的dom相关联
+   - ui-sref(指令)
+
+
+
+ui.router的优点:
+
+1.多视图 **页面可以显示多个动态变化的不同区块**
+
+2.嵌套视图  **页面某个动态变化区块中，嵌套着另一个可以动态变化的区块**
+
+
+
+* 多视图
+
+  ```javascript
+  <div ui-view></div>
+  <div ui-view="status"></div>
+
+  $stateProvider
+      .state('home', {
+          url: '/',
+          views: {
+              '': {
+                  template: 'hello world'
+              },
+              'status': {
+                  template: 'home page'
+              }
+          }   //注意多视图的命名不可以有@！
+      });
+
+  //这就是基本的统一路由下的多视图  根据不同views名称渲染标签
+  ```
+
+* 嵌套视图
+
+  ```javascript
+  <div ng-view>
+      I am parent
+      <div ng-view>I am child</div>
+  </div>
+   $stateProvider
+      .state('parent', {
+          abstract: true,//代表抽象模版，不可引用
+          url: '/',
+          template: 'I am parent <div ui-view></div>'
+      })
+      .state('parent.child', {
+          url: '',
+          template: 'I am child'
+    });
+  //这是一个基本的嵌套视图，有明显的父子关系
+  ```
+
+* controller
+
+  ```javascript
+  $stateProvider
+      .state('contacts', {
+          abstract: true,
+          url: '/contacts',
+          templateUrl: 'app/contacts/contacts.html',
+          resolve: {
+              'contacts': ['contacts',
+                  function( contacts){
+                      return contacts.all();
+               }]
+           },//控制器中可以注入服务或者resolve
+          controller: ['$scope', '$state', 'contacts', 'utils',
+              function ($scope,   $state,   contacts,   utils) {
+              // 向作用域写数据
+              $scope.contacts = contacts;
+          }]
+      });
+  ```
+
+* resolve  ：**修改他的值会重新调用控制器，如果是嵌套路由的话，不重新设置resolve值则会“继承”父路由的resolve值**
+
+  ```javascript
+   $stateProvider
+          .state("index",{
+              url:'/',
+              templateUrl:'list.html',
+              controller:'myController',
+              resolve:{
+                  user:function(){
+                      return {
+                          name:"perter",
+                          email:"826415551@qq.com",
+                          age:"18"
+                      }
+                  }
+              }
+          })
+
+          .state("index.list",{
+              url:'/list',
+              template:'<h1>{{name}}</h1>',
+              controller:'myController',
+          })
+          .state("index.list2",{
+              url:'/list2',
+              template:'<h1>{{name}}</h1>',
+              controller:'myController',
+              resolve:{
+                  user:function () {
+                      return{
+                      name:"Rose"
+                      }
+                  }
+              }
+          })
+   //list没有设置resolve则继承父类的，list2设置了会覆盖这样list和list2虽然公用一个控制器但是作用域的值却不一样
+  ```
