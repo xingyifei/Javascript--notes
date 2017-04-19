@@ -364,7 +364,9 @@ params:{
 
 ng-disabled只能用在以下标签中
 
-<input>  <textarea><select><button>
+```html
+<input>  <textarea>   <select>   <button>
+```
 
 
 
