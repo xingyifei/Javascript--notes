@@ -398,24 +398,42 @@ ui.router的优点:
 
 * 多视图
 
+  在 ui-router 内部，`views`属性中的每个视图都被按照`viewname@statename`的方式分配为绝对名称，`viewname`是目标模板中的`ui-view`对应的名称，`statename`是状态的名称，状态名称对应于一个目标模板。`@`前面部分为空表示未命名的`ui-view`，`@`后面为空则表示相对于根模板，通常是 index.html
+
   ```javascript
   <div ui-view></div>
   <div ui-view="status"></div>
 
-  $stateProvider
+  $stateProvider//此时home为根状态 他的父模版就是index.html,所以他的模版会被注入index中 没有名字的view对应index里的<div ui-view></div>有名字的对应各自ui-view
+  //注意！此处可以将非匿名视图注到匿名视图中，需在匿名视图中加@            
+  //如下例子中 非匿名视图会被注到匿名视图中而非index中
       .state('home', {
           url: '/',
           views: {
               '': {
-                  template: 'hello world'
+                  template: '<div ui-view='status@'></div>'
               },
-              'status': {
+              'status': {//注意！此处不可以写成status@XX  除非XX是他的父模版，本例子中他的父模版就是index所以只能插入index中 
                   template: 'home page'
               }
-          }   //注意多视图的命名不可以有@！
+          }   
       });
-
-  //这就是基本的统一路由下的多视图  根据不同views名称渲染标签
+  --------------------------------------------------------------
+  $stateProvider.state('login', {
+  					url: '/login',
+  					views: {
+  						'': {
+  							templateUrl: './main.html'
+  						},
+  						'foot': {
+  							templateUrl: './foot.html'
+  						}
+  					}
+  				})
+  -----main.html-----
+    <div ui-view='foot@'></div>
+    //此时非匿名视图就会被注到匿名视图中而非index中
+    //这就是基本的统一路由下的多视图  根据不同views名称渲染标签
   ```
 
 * 嵌套视图
@@ -428,15 +446,43 @@ ui.router的优点:
    $stateProvider
       .state('parent', {
           abstract: true,//代表抽象模版，不可引用
-          url: '/',
+          url: '/parent',
           template: 'I am parent <div ui-view></div>'
       })
       .state('parent.child', {
-          url: '',
+          url: '/son',//URL地址为/parent/son
           template: 'I am child'
     });
   //这是一个基本的嵌套视图，有明显的父子关系
+  ------------------------------------------------------------------
+    【嵌套视图配合多视图使用】
+  -----------------------------------------------------------------
+    $stateProvider.state('login', {
+  					url: '/login',
+  					abstract: true,
+  					views: {
+  						'': {
+  							templateUrl: './main.html'
+  						},
+  						'foot': {
+  							templateUrl: './foot.html'
+  						},
+  						'contarn':{
+  							template:'<div ui-view></div>'
+  						}
+  					}
+  				})
+  				.state('login.son',{
+  					url:'/son',
+  					template:'<div>son</div>'
+  				})
+    //当父模版为多视图且抽象模版时 他的子模版会被插入到多视图中 未命名的ui-view中，本例子中子模版被插入到了contarn中的ui-view。 
   ```
+  **总结：在实际开发中，多视图有2种解决方法。**
+
+  **第一种是使用angular的conponent组件化 ，将头部和菜单栏封装成组件放入indexhtml中 将内容区用嵌套路由注入ui-view中 。**
+
+  **第二种是利用嵌套路由的多视图+嵌套视图 如上例子，将跟路由设置为多视图抽象模版，将头部和菜单栏作为多视图模版注入匿名视图模版mainhtml，在内容区模版contarn预留不命名的ui-view来注入内容区。内容区必须为子模版才会注入父模版中的ui-view**
 
 * controller
 
