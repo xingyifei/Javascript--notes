@@ -372,21 +372,6 @@ ng-disabled只能用在以下标签中
 
 angular自带的ng-router路由功能有限推荐使用嵌套路由ui.router
 
-1. ngRoute
-   - $routeProvider(服务提供者) --------- 对应于下面的urlRouterProvider和stateProvider
-   - $route(服务) --------- 对应于下面的urlRouter和state
-   - $routeParams(服务) --------- 对应于下面的stateParams
-   - ng-view(指令) --------- 对应于下面的ui-view
-2. ui.router
-   - $urlRouterProvider(服务提供者) --------- 用来配置路由重定向
-   - $urlRouter(服务)
-   - $stateProvider(服务提供者) --------- 用来配置路由
-   - $state(服务) --------- 用来显示当前路由状态信息，以及一些路由方法（如：跳转）
-   - $stateParams(服务) --------- 用来存储路由匹配时的参数
-   - ui-view(指令) --------- 路由模板渲染，对应的dom相关联
-   - ui-sref(指令)
-
-
 
 ui.router的优点:
 
