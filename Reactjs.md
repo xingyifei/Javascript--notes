@@ -260,3 +260,213 @@ React 为每个状态都提供了两种处理函数，`will` 函数在进入状�
 > ```
 
 这是因为 [React 组件样式](https://facebook.github.io/react/tips/inline-styles.html)是一个对象，所以第一重大括号表示这是 JavaScript 语法，第二重大括号表示样式对象
+
+
+
+
+
+
+
+### React-router
+
+#### 基本语法
+
+Router本身就是一个React组件	
+
+`Router`组件本身只是一个容器，真正的路由要通过`Route`组件定义
+
+```javascript
+import { Router, Route, hashHistory } from 'react-router';
+
+render((
+  <Router history={hashHistory}>
+    <Route path="/" component={App}/>
+  </Router>
+), document.getElementById('app'));
+
+```
+
+`Router`组件有一个参数`history`，它的值`hashHistory`表示，路由的切换由URL的hash变化决定，即URL的`#`部分发生变化。举例来说，用户访问`http://www.example.com/`，实际会看到的是`http://www.example.com/#/`
+
+
+
+#### 嵌套路由
+
+```javascript
+-------------写法一---------------------------------
+<Router history={hashHistory}>
+  <Route path="/" component={App}>//父路由
+    <Route path="/repos" component={Repos}/> //子路由
+    <Route path="/about" component={About}/>
+  </Route>
+</Router>
+ ---------------------写法二------------------
+   const routsons=[
+     {
+       path:'/',
+       component:App,
+       childrenRoutes:[{path:'first',components:first]
+     },
+      {
+        path:'*',
+        components:Notfound  //注意此对象为进入错误路由时的重定向
+      }
+   ]
+   <Router routes={routsons}></Router>
+页面渲染为
+<App>
+  <Repos/>
+</App>
+//父路由的组件需要写this。props。children 代表子组件
+export default React.createClass({
+  render() {
+    return <div>
+      {this.props.children}
+    </div>
+  }
+})
+
+```
+
+
+子路由也可以不写在`Router`组件里面，单独传入`Router`组件的`routes`属性。
+
+> ```javascript
+> let routes = <Route path="/" component={App}>
+>   <Route path="/repos" component={Repos}/>
+>   <Route path="/about" component={About}/>
+> </Route>;
+>
+> <Router routes={routes} history={browserHistory}/>
+> ```
+
+path属性的匹配
+
+```javascript
+<Route path="/hello/:name">
+// 匹配 /hello/michael
+// 匹配 /hello/ryan
+
+<Route path="/hello(/:name)">
+// 匹配 /hello
+// 匹配 /hello/michael
+// 匹配 /hello/ryan
+
+<Route path="/files/*.*">
+// 匹配 /files/hello.jpg
+// 匹配 /files/hello.html
+
+<Route path="/files/*">
+// 匹配 /files/ 
+// 匹配 /files/a
+// 匹配 /files/a/b
+
+<Route path="/**/*.jpg">
+// 匹配 /files/hello.jpg
+// 匹配 /files/path/to/file.jpg
+  
+（1）:paramName
+:paramName匹配URL的一个部分，直到遇到下一个/、?、#为止。这个路径参数可以通过this.props.params.paramName取出。
+（2）()
+()表示URL的这个部分是可选的。
+（3）*
+*匹配任意字符，直到模式里面的下一个字符为止。匹配方式是非贪婪模式。
+（4） **
+** 匹配任意字符，直到下一个/、?、#为止。匹配方式是贪婪模式
+```
+
+path也可以使用相对路径（不带/） 嵌套路由中  子路由相对于父路由
+
+路由匹配是从上倒下执行  遇到第一个匹配到的后就不会再继续执行
+
+URL的查询字符串`/foo?bar=baz`，可以用`this.props.location.query.bar`获取
+
+
+
+### IndexRoute组件
+
+```javascript
+<Router>
+  <Route path="/" component={App}>
+    <Route path="accounts" component={Accounts}/>
+    <Route path="statements" component={Statements}/>
+  </Route>
+</Router>
+ //此时访问/时 不会渲染子路由
+```
+
+```javascript
+<Router>
+  <Route path="/" component={App} onEnter={requireAuth}>
+    <IndexRoute component={Home}/>
+    <Route path="accounts" component={Accounts}/>
+    <Route path="statements" component={Statements}/>
+  </Route>
+</Router>
+function (nextState, replaceState) {
+  replaceState(null, '/messages/' + nextState.params.id);
+}//onEnter 方法表示进入这个路由前执行的方法
+ //IndexRoute他在没有匹配子路由的时候，在 / 路由下渲染默认的子组件 home。 类似angular嵌套路由抽象路由的里的匿名视图
+```
+
+`IndexRoute`组件没有路径参数`path`
+
+## IndexRedirect 组件
+
+`IndexRedirect`组件用于访问根路由的时候，将用户重定向到某个子组件
+
+```javascript
+<Route path="/" component={App}>
+  ＜IndexRedirect to="/welcome" />
+  <Route path="welcome" component={Welcome} />
+  <Route path="about" component={About} />
+</Route>
+```
+
+## Redirect 组件
+
+`<Redirect>`组件用于路由的跳转，即用户访问一个路由，会自动跳转到另一个路由。
+
+> ```javascript
+> <Route path="inbox" component={Inbox}>
+>   {/* 从 /inbox/messages/:id 跳转到 /messages/:id */}
+>   ＜Redirect from="messages/:id" to="/messages/:id" />
+> </Route>
+> ```
+
+现在访问`/inbox/messages/5`，会自动跳转到`/messages/5`
+
+
+
+## histroy 属性
+
+如果设为`hashHistory`，路由将通过URL的hash部分（`#`）切换，URL的形式类似`example.com/#/some/path`
+
+如果设为`browserHistory`，浏览器的路由就不再通过`Hash`完成了，而显示正常的路径`example.com/some/path`，背后调用的是浏览器的History API。(这种情况需要对服务器进行修改)
+
+`createMemoryHistory`主要用于服务器渲染。它创建一个内存中的`history`对象，不与浏览器URL互动。
+
+
+
+### 路由间的跳转
+
+第一种方法是使用`browserHistory.push`
+
+第二种方法是使用`context`对象。
+
+> ```javascript
+> export default React.createClass({
+>
+>   // ask for `router` from context
+>   contextTypes: {
+>     router: React.PropTypes.object
+>   },
+>
+>   handleSubmit(event) {
+>     // ...
+>     this.context.router.push(path)
+>   },
+> })
+> ```
+
+
