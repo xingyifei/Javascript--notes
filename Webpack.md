@@ -49,10 +49,16 @@ npm install style-loader css-loader url-loader sass-loader raw-loader
   ```javascript
   1    module.exports = {
    2   context: __dirname + '/app',//上下文
-   3   entry: './index.js',//入口文件
-   4   output: {//输出文件
-   5     path: __dirname + '/app',
-   6     filename: './bundle.js'
+   3   entry: {        //多个入口文件，属性值为chunk值
+          app: './src/app.js',
+          vendors: './src/vendors.js'
+       },                                     
+   4   output: {      //输出文件（只能为一个）
+   5     path: __dirname + '/app',  //绝对路径,
+         chunkFilename:'./bundle.js',
+   6     filename: './bundle.js'  //文件名；当多个入口文件或使用了提取  公共插件时 应用[name] 被 chunk 的 name 替换。
+            //[hash] 被 compilation 生命周期的 hash 替换。
+            //[chunkhash] 被 chunk 的 hash 替换
    7   },
    8   module: {
    9     loaders: [//加载器
@@ -92,11 +98,21 @@ cd ..
 cd a/../subfile
 ```
 
-html-webpack-plugin 插件作用
 
-- 为html文件中引入的外部资源如`script`、`link`动态添加每次compile后的hash，防止引用缓存的外部文件问题
-- 可以生成创建html入口文件，比如单页面可以生成一个html文件入口，配置**N**个`html-webpack-plugin`可以生成**N**个页面入口
 
+### 常用插件
+
+**html-webpack-plugin**   将打包的JS文件自动按照模版index引入并生成新的index
+
+```javascript
+html-webpack-plugin
+
+new htmlwebpackplugin({
+      template: './index.html',//模版文件地址
+      inject: 'body',//JS插入的位置
+      hash: true
+    })
+```
 
 #### 那为什么要动态生成HTML，我自己写不行吗？答案当然是可以的。
 
@@ -104,35 +120,43 @@ html-webpack-plugin 插件作用
 
 
 
+**webpack.optimize.CommonsChunkPlugin**
 
+用来将文件公共部分提取
 
+```javascript
+ entry: {
+    main1: './mian1.js',
+    mian2: './mian2.js',
+    vendor: [
+      'vue',
+      'vuex',
+      'whatwg-fetch',
+      'es6-promise'
+    ],
+  }, 
+    --------------------------------------------------------------
+new webpack.optimize.CommonsChunkPlugin({
+    	name:'main',//提取的打包JS的chunk名
+    	filename:'common.js'//文件名
+        chunks:[]//限定提取哪个chunk里的公共部分，不写默认所有
+ })
+   ---------------------------------------------------------------
+ //注意 name值如果不存在（也就是匹配不到已存在的chunk值）那么插件会从chunks里提取他们的公共部分，生成新的chunk，名子就是name【见下列】
+  new webpack.optimize.CommonsChunkPlugin({
+      name: 'common',
+      chunks: ['main1', 'main2'],
+      filename: 'js/common.bundle.js',
+      minChunks: 2,
+    }),//本例子会从main1和main2 chunk里提取他们的公共部分生成新的chunk名为commom
+    
+//如果name存在 会从chunks属性里提取共同的name（也就是chunk对应的公共部分）
+    new webpack.optimize.CommonsChunkPlugin({
+      name: 'vendor',
+      chunks: ['common'],
+      filename: 'js/vendor.bundle.js',
+      minChunks: Infinity,
+    }),//本例子中会从commom chunk中提取公共的vendor部分！也就是第三方插件!
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-* ### 需要一个入口文件index.js
-
-  ```javascript
-  var angular = require('angular');//引入angular
-  var ngModule = angular.module('app',[]);//定义一个angular模块
-  require('./directives/hello-world/hello-world.js')(ngModule);//引入指令(directive)文件
-  require('./css/style.css');//引入样式文件
-  ```
-
-  ​
-
-  ​
-
+​

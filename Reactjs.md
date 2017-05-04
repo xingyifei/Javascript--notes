@@ -305,7 +305,7 @@ render((
      {
        path:'/',
        component:App,
-       childrenRoutes:[{path:'first',components:first]
+       childrenRoutes:[{path:'first',components:first}]
      },
       {
         path:'*',
@@ -325,7 +325,6 @@ export default React.createClass({
     </div>
   }
 })
-
 ```
 
 
@@ -413,7 +412,7 @@ function (nextState, replaceState) {
 
 ## IndexRedirect 组件
 
-`IndexRedirect`组件用于访问根路由的时候，将用户重定向到某个子组件
+`IndexRedirect`组件用于访问根路由的时候，将用户重定向到某个**子组件**
 
 ```javascript
 <Route path="/" component={App}>
@@ -470,3 +469,210 @@ function (nextState, replaceState) {
 > ```
 
 
+
+## React-router的按需加载（类似Angular嵌套路由的lazyloding）
+
+首先需要在Webpack输出路径output中配置一个属性
+
+```javascript
+output: {
+    path: path.join(__dirname, '/../dist/assets'),
+    filename: 'app.js',
+    publicPath: defaultSettings.publicPath,
+    // 添加 chunkFilename
+    chunkFilename: '[name].[chunkhash:5].chunk.js',
+},
+```
+
+`name` 是在代码里为创建的 chunk 指定的名字，如果代码中没指定则 webpack 默认分配 id 作为 name。
+
+`chunkhash` 是文件的 hash 码，这里只使用前五位。
+
+然后将路由配置中的component改为getcomponent
+
+```javascript
+const Routerconfig={
+  path:'/',
+  indexRoute:{
+    getComponent(nextState,cb){
+      require.ensure([], (require) => {
+        cb(null, require('components/layer/HomePage'))
+      }, 'HomePage')
+    },
+    }
+  },
+  getComponent(nextState,cb){
+    require.ensure([], (require) => {
+      cb(null, require('components/Main')【.default】)
+    }, 'Main')//如果此处的模块是用ES6的import和export来进行导入导出需在函数后加.default
+  },
+  childRoutes:[
+    require('./routes/baidu'),
+    require('./routes/404'),
+    require('./routes/redirect')
+  ]  //三个子路由分别对应一个路由模块(如下)
+}
+
+ReactDOM.render(
+   (
+    <Router
+      history={browserHistory}
+      routes={rootRoute}
+      />
+  ), document.getElementById('app')
+)
+```
+
+```
+routes/
+├── 404
+│   └── index.js
+├── baidu
+│   ├── index.js
+│   └── routes
+│       ├── frequency
+│       │   └── index.js
+│       └── result
+│           └── index.js
+└── redirect
+    └── index.js
+```
+
+和 rootRoute 类似，里面的每个 index.js 都是一个路由对象：
+
+### /404/index.js
+
+```javascript
+module.exports = {
+  path: '404',
+
+  getComponent(nextState, cb) {
+    require.ensure([], (require) => {
+      cb(null, require('components/layer/NotFoundPage'))
+    }, 'NotFoundPage')
+  }
+}
+```
+
+### /baidu/index.js
+
+```javascript
+module.exports = {
+  path: 'baidu',
+
+  getChildRoutes(partialNextState, cb) {
+    require.ensure([], (require) => {
+      cb(null, [
+        require('./routes/result'),
+        require('./routes/frequency')
+      ])
+    })
+  },
+
+  getComponent(nextState, cb) {
+    require.ensure([], (require) => {
+      cb(null, require('components/layer/BaiduPage'))
+    }, 'BaiduPage')
+  }
+}
+```
+
+### /baidu/routes/frequency/index.js
+
+```javascript
+module.exports = {
+  path: 'frequency',
+
+  getComponent(nextState, cb) {
+    require.ensure([], (require) => {
+      cb(null, require('components/layer/BaiduFrequencyPage'))
+    }, 'BaiduFrequencyPage')
+  }
+}
+```
+
+```javascript
+module.exports = {
+  path: '*',
+  onEnter: (_, replaceState) => replaceState(null, "/404")
+}
+```
+
+
+
+
+
+### React ES6写法
+
+```javascript
+import React form 'react';
+class TodoItem extends React.Component{
+    static propTypes = { // 筛选属性值条件(常量)
+        name: React.PropTypes.string
+    };
+    static defaultProps = { // 默认属性值(常量)
+        name: ''
+    };
+    constructor(props){
+        super(props)
+        this.state={//设置初始状态(变量)
+          name:1
+        }
+    }
+    render(){
+        return <div></div>
+    }
+}
+```
+**在React ES6之前的写法中 React.creatClass中，会自动将组件的this(也就是组件的实例化)绑定到函数里的this中。**
+
+**但是在ES6的写法中有4个方法将来改变指向**
+
+```javascript
+//第一种
+class xingyifei extends Component(){
+  constructor(){
+    
+  }
+  getMoney(canshu,e){
+    console.log(canshu)//我是参数
+  }
+  render(){
+    <div onCick={this.getMoney.bind(this,"我是参数")}></div>
+    //此处bind（）将函数里的this绑定到组件this
+  }
+}
+
+//第二种写法
+class xingyifei extends Component(){
+  constructor(){
+    this.getMoney=this.getMoney.bind(this)
+  }
+  getMoney(e){
+    console.log(111)
+  }
+  render(){
+    <div onClick={this.getMoney}></div>
+  }
+}
+//第三种写法
+class xingyifei extends Component(){
+  constructor(){
+  }
+  getMoney(){
+  }
+  render(){
+    <div onClick={()=>{this.getMoney()}}>
+  }
+}
+//第四种写法
+class xingyifei extends Component(){
+  constructor(){
+  }
+  getMoney=(e)=>{
+  }
+  render(){
+    <div onClick={this.getMoney}>
+  }
+}
+```
