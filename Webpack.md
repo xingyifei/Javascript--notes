@@ -98,7 +98,28 @@ cd ..
 cd a/../subfile
 ```
 
+### 加载器
 
+```javascript
+module: {
+		loaders: [{
+			test: /\.(jpe?g|png|gif|svg)$/i,
+			loader: "url-loader?limit=8192&name=./[name].[ext]?[hash]"
+		}, //url-loader比file-loader优点是可以压缩文件
+		{
+			test: /\.css$/i,
+			loader: "style-loader!css-loader"//先使用css-loader将css加载到js中，然后使用style-loader让js识别css
+		},
+		{
+			test: /\.js$/,
+			loaders: "babel-loader",
+			exclude: path.join(__dirname, 'node_modules'),
+			query: {
+                   presets: ['es2015']//使用babel-loader来加载ES6语法
+            }
+		}]
+	},
+```
 
 ### 常用插件
 
@@ -159,4 +180,104 @@ new webpack.optimize.CommonsChunkPlugin({
     }),//本例子中会从commom chunk中提取公共的vendor部分！也就是第三方插件!
 ```
 
-​
+
+
+**webpack.ProvidePlugin**   声明全局变量（一般用来声明第三方类库）
+
+```javascript
+new webpack.ProvidePlugin({
+			$: "jquery",//声明变量$,对应resolve里的alias里的jquery
+			jQuery: "jquery"//声明变量jquery，对应resolve里的alias的jquery
+		                })
+	--------------------------------------------------------	
+resolve: {
+		alias: {
+			'jquery': path.resolve(path.join(__dirname, 'jquery-3.1.1.min.js'))//预加载JQ源文件并对应名字为jquery与全局变量对应
+		}
+	    },
+```
+
+
+## 使用gulp来启动webpack+服务器
+
+webpack可以对文件进行打包编译压缩
+
+但是在开发模式中我们需要本地搭建服务器来进行调试本例中使用gulp中的browser-sync来搭建服务器，gulp来启动相关服务。
+
+#### gulp
+
+gulp是一种工程流工具，可以自定义任务并执行
+
+```javascript
+gulp.task('webpack', (cb) => {
+	config.entry.app =path.join(__dirname,'index.js')
+	webpack(config, (err, stats) => {
+		if(err) {
+			throw new gutil.PluginError("webpack", err);
+		}
+		gutil.log("[webpack]", stats.toString({
+			colors: colorsSupported,
+			chunks: false,
+			errorDetails: true
+		}));
+		cb();//执行下一个流任务
+	})
+});
+gulp.task('default', ['serve']);//默认任务会先执行
+```
+
+#### 在gulp中使用Browser-sync
+
+```javascript
+gulp.task('serve', (cb) => {
+	config.entry.app = [
+		'webpack-hot-middleware/client?reload=true',//其中 ? 后的内容相当于为webpack-hot-middleware设置参数，这里 reload=true 的意思是，如果碰到不能hot reload的情况，就整页刷新。
+		path.join(__dirname, 'index.js')
+	]
+	var temp=webpack(config)
+	serve({
+		port: process.env.PORT || 3000, //端口号
+		open: true,   //是否启动服务器后打开游览器
+		server: {
+			baseDir: '/' //指定服务器启动根目录
+		},
+		middleware: [   //自定义中间件
+			webpackDevMiddelware(temp, {
+				stats: {
+					colors: colorsSupported,
+					chunks: false,
+					modules: false
+				},
+				publicPath: config.output.publicPath //获取webpack打包后的文件进行操作（处理静态资源）
+			}),
+			webpachHotMiddelware(temp)//启动热重载
+		]
+	});
+})
+gulp.task('watch',['serve']);//监听serve流的变化刷新
+```
+
+**总计：实际开发中可以使用gulp中的browser-sync来搭建服务器并加入webpack-hot-middleware和webpack-Dev-middleware来增加热替换功能（缺一不可）**
+
+**或者使用流行的express框架搭建本地服务器加入webpack-dev-middleware和webpack-hot-middleware来增加热重载（express例子如下↓）**
+
+```javascript
+var webpack = require('webpack'),
+    webpackDevMiddleware = require('webpack-dev-middleware'),
+    webpackHotMiddleware = require('webpack-hot-middleware'),
+    webpackDevConfig = require('./webpack.config.js');
+
+var compiler = webpack(webpackDevConfig);
+
+// 给服务器增加webpackDevMiddleware来处理静态资源
+app.use(webpackDevMiddleware(compiler, {
+
+    // 此处的路径需要与webpack配置文件里的出口路径一致
+    publicPath: webpackDevConfig.output.publicPath,
+    noInfo: true,
+    stats: {
+        colors: true
+    }
+}));
+app.use(webpackHotMiddleware(compiler));//服务器启动热重载
+```
