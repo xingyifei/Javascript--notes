@@ -626,7 +626,7 @@ class TodoItem extends React.Component{
 ```
 **在React ES6之前的写法中 React.creatClass中，会自动将组件的this(也就是组件的实例化)绑定到函数里的this中。**
 
-**但是在ES6的写法中有4个方法将来改变指向**
+**但是在ES6的写法中有4个方法将来改变指向(还有部分特殊写法)**
 
 ```javascript
 //第一种
@@ -675,4 +675,119 @@ class xingyifei extends Component(){
     <div onClick={this.getMoney}>
   }
 }
+//第五种写法
+class xingyifei extends Component(){
+  test(e) {
+    console.log(e)
+  }
+  render() {
+    return <div onClick={::this.test}></div>
+  }
+}
+// 第六中写法
+class xingyifei extends Component() {
+  test(name) {
+    return (event) => {
+      console.log(event, name) // dom,11
+    }                                                                                           
+  }
+  render() {
+    return <div onClick={::this.test(11)}></div>
+  }
+}
+```
+### React组件通信
+
+在React中通信有3种情况
+
+* 【父组件】→【子组件】
+* 【子组件】→【父组件】
+* 【A组件】→【B组件】
+
+【第一种情况】通过修改父组件的props
+
+```javascript
+// 父组件
+var MyContainer = React.createClass({
+  getInitialState: function () {
+    return {
+      checked: true
+    };
+  },
+  render: function() {
+    return (
+      <ToggleButton text="Toggle me" checked={this.state.checked} />
+    );
+  }
+});
+
+// 子组件
+var ToggleButton = React.createClass({
+  render: function () {
+    // 从【父组件】获取的值
+    var checked = this.props.checked,
+        text = this.props.text;
+
+    return (
+        <label>{text}: <input type="checkbox" checked={checked} /></label>
+    );
+  }
+});
+```
+
+【第二种情况】通过this.props.callbackParent(新数据) 子组件state引自父组件props，借助此方法先修改state，然后通知父组件修改
+
+```javascript
+// 父组件
+var MyContainer = React.createClass({
+  getInitialState: function () {
+    return {
+      checked: false
+    };
+  },
+  onChildChanged: function (newState) {
+    this.setState({
+      checked: newState
+    });
+  },
+  render: function() {
+    var isChecked = this.state.checked ? 'yes' : 'no';
+    return (
+      <div>
+        <div>Are you checked: {isChecked}</div>
+        <ToggleButton text="Toggle me"
+          initialChecked={this.state.checked}
+          callbackParent={this.onChildChanged}
+          />
+      </div>
+    );
+  }
+});
+
+// 子组件
+var ToggleButton = React.createClass({
+  getInitialState: function () {
+    return {
+      checked: this.props.initialChecked
+    };
+  },
+  onTextChange: function () {
+    var newState = !this.state.checked;
+    this.setState({
+      checked: newState
+    });
+    // 这里要注意：setState 是一个异步方法，所以需要操作缓存的当前值
+    this.props.callbackParent(newState);
+  },
+  render: function () {
+    // 从【父组件】获取的值
+    var text = this.props.text;
+    // 组件自身的状态数据
+    var checked = this.state.checked;
+
+    return (
+        <label>{text}: <input type="checkbox" checked={checked}                 onChange={this.onTextChange} /></label>
+    );
+  }
+});
 ```
